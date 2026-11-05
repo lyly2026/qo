@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Optics</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --border: #334155;
+            --placeholder-border: #475569;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            margin-bottom: 1.25rem;
+            color: var(--text-main);
+            border-left: 4px solid var(--accent);
+            padding-left: 0.75rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Styling for empty placeholder slots */
+        .card.placeholder {
+            border: 2px dashed var(--placeholder-border);
+            background-color: transparent;
+            opacity: 0.7;
+        }
+
+        .card.placeholder:hover {
+            opacity: 1;
+            border-color: var(--accent);
+        }
+
+        .card.placeholder h3 {
+            color: var(--text-muted);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Quantum Optics</h1>
+            <p class="subtitle">Interactive Simulators & Resource Hub</p>
+        </header>
+
+        <!-- Quantum Simulators Section -->
+        <section>
+            <h2>Quantum Simulators</h2>
+            <div class="grid">
+                <!-- Active Simulator Link -->
+                <a href="https://bloch.labs.vu.nl/" target="_blank" rel="noopener" class="card">
+                    <h3>Optical Bloch Equation Simulator</h3>
+                    <p>Visualize two-level quantum system dynamics, Rabi oscillations, and Bloch sphere rotations.</p>
+                </a>
+
+                <!-- Additional Active Simulator Link -->
+                <a href="https://lab.quantumflytrap.com/" target="_blank" rel="noopener" class="card">
+                    <h3>Quantum Flytrap</h3>
+                    <p>Interactive virtual lab for simulating optical setups, interference, and polarization.</p>
+                </a>
+
+                <!-- Placeholder 1: Duplicate this block to add more links -->
+                <a href="#" class="card placeholder">
+                    <h3>+ Add Simulator Title</h3>
+                    <p>Replace href="#" with your URL and add a short description of the simulator here.</p>
+                </a>
+
+                <!-- Placeholder 2 -->
+                <a href="#" class="card placeholder">
+                    <h3>+ Add Simulator Title</h3>
+                    <p>Replace href="#" with your URL and add a short description of the simulator here.</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Reference & Learning Resources Section -->
+        <section>
+            <h2>References & Notes</h2>
+            <div class="grid">
+                <!-- Placeholder 3 -->
+                <a href="#" class="card placeholder">
+                    <h3>+ Add Paper / Lecture Notes</h3>
+                    <p>Space reserved for quantum optics reference papers, lecture notes, or textbooks.</p>
+                </a>
+
+                <!-- Placeholder 4 -->
+                <a href="#" class="card placeholder">
+                    <h3>+ Add Tool / Library</h3>
+                    <p>Space reserved for Python libraries (e.g., QuTiP) or theoretical documentation.</p>
+                </a>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; Quantum Optics • Hosted on GitHub Pages</p>
+        </footer>
+    </div>
+
+</body>
+</html>
