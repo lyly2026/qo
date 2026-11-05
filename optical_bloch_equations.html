@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optical Bloch Equations & Bloch Sphere Simulator</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { 800: '#0B1120', 900: '#070D19', 950: '#030712' },
+                        accent: { blue: '#3B82F6', cyan: '#06B6D4', gold: '#F59E0B', red: '#EF4444' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Three.js (3D Graphics) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Chart.js (Real-time plotting) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #070D19; }
+        ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        canvas { touch-action: none; }
+    </style>
+</head>
+<body class="bg-navy-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden selection:bg-blue-600 selection:text-white">
+
+    <!-- Header / Navigation -->
+    <header class="border-b border-slate-800 bg-navy-900/80 backdrop-blur-md px-6 py-3.5 sticky top-0 z-50 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                <i class="fa-solid fa-atom text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-white tracking-wide">Optical Bloch Equations (OBE) Simulator</h1>
+                <p class="text-xs text-slate-400">Quantum Optics — Lecture 12: Bloch Sphere & Torque Vector Dynamics</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="status-text" class="text-slate-300 font-mono">Status: Ready</span>
+            </div>
+            <button id="reset-cam-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-300 hover:text-white transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-camera-rotate"></i> Reset Camera
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 max-w-[1920px] mx-auto w-full">
+        
+        <!-- Left Panel: Controls & Parameters (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-100px)] pr-1">
+            
+            <!-- Quick Presets -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-lg">
+                <h2 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Pulse & State Presets
+                </h2>
+                
+                <div class="space-y-2">
+                    <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Initial State Presets</label>
+                    <div class="grid grid-cols-3 gap-1.5 text-xs">
+                        <button onclick="setInitialState(0,0,-1)" class="p-2 bg-slate-800 hover:bg-blue-600/30 border border-slate-700 hover:border-blue-500/50 rounded-lg transition-all text-center">
+                            <span class="block font-mono text-blue-400">|1⟩ Ground</span>
+                            <span class="text-[10px] text-slate-500">(0, 0, -1)</span>
+                        </button>
+                        <button onclick="setInitialState(0,0,1)" class="p-2 bg-slate-800 hover:bg-blue-600/30 border border-slate-700 hover:border-blue-500/50 rounded-lg transition-all text-center">
+                            <span class="block font-mono text-red-400">|2⟩ Excited</span>
+                            <span class="text-[10px] text-slate-500">(0, 0, +1)</span>
+                        </button>
+                        <button onclick="setInitialState(1,0,0)" class="p-2 bg-slate-800 hover:bg-blue-600/30 border border-slate-700 hover:border-blue-500/50 rounded-lg transition-all text-center">
+                            <span class="block font-mono text-emerald-400">+u Super</span>
+                            <span class="text-[10px] text-slate-500">(+1, 0, 0)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-3 space-y-2">
+                    <label class="text-xs text-slate-400 uppercase font-semibold tracking-wider">Pulse Sequences</label>
+                    <div class="grid grid-cols-3 gap-1.5 text-xs">
+                        <button onclick="runPiPulse()" class="p-2 bg-slate-800 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500/50 rounded-lg transition-all font-mono text-amber-300">
+                            π Pulse
+                        </button>
+                        <button onclick="runPiHalfPulse()" class="p-2 bg-slate-800 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500/50 rounded-lg transition-all font-mono text-amber-300">
+                            π/2 Pulse
+                        </button>
+                        <button onclick="runRamseySequence()" class="p-2 bg-slate-800 hover:bg-purple-600/30 border border-slate-700 hover:border-purple-500/50 rounded-lg transition-all font-mono text-purple-300">
+                            Ramsey Demo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Physical Parameters Sliders -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-4">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center justify-between">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-sliders text-blue-400"></i> Hamiltonian Parameters</span>
+                    <button onclick="resetParameters()" class="text-xs text-slate-400 hover:text-slate-200 underline">Default</button>
+                </h2>
+
+                <!-- Rabi Frequency Omega_0 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-omega" class="text-slate-300 font-medium">Rabi Frequency <span class="font-mono text-cyan-400">Ω₀</span></label>
+                        <span id="val-omega" class="font-mono text-cyan-400">2.00 rad/s</span>
+                    </div>
+                    <input type="range" id="slider-omega" min="0" max="10" step="0.1" value="2.0" class="w-full accent-cyan-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-[10px] text-slate-500">Drives transition between ground |1⟩ and excited state |2⟩.</p>
+                </div>
+
+                <!-- Detuning Delta -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-delta" class="text-slate-300 font-medium">Laser Detuning <span class="font-mono text-amber-400">Δ = ω - ω₀</span></label>
+                        <span id="val-delta" class="font-mono text-amber-400">0.00 rad/s</span>
+                    </div>
+                    <input type="range" id="slider-delta" min="-10" max="10" step="0.1" value="0.0" class="w-full accent-amber-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-[10px] text-slate-500">Frequency difference between laser and atomic transition.</p>
+                </div>
+
+                <!-- Longitudinal Decay Gamma Parallel -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-gamma-p" class="text-slate-300 font-medium">Spontaneous Emission <span class="font-mono text-red-400">γ_∥ = 1/T₁</span></label>
+                        <span id="val-gamma-p" class="font-mono text-red-400">0.20 s⁻¹</span>
+                    </div>
+                    <input type="range" id="slider-gamma-p" min="0" max="5" step="0.05" value="0.2" class="w-full accent-red-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-[10px] text-slate-500">Population decay rate from excited state |2⟩ down to |1⟩.</p>
+                </div>
+
+                <!-- Dephasing Rate Gamma Perpendicular -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-gamma-t" class="text-slate-300 font-medium">Dephasing Rate <span class="font-mono text-purple-400">γ_⊥ = 1/T₂</span></label>
+                        <span id="val-gamma-t" class="font-mono text-purple-400">0.10 s⁻¹</span>
+                    </div>
+                    <input type="range" id="slider-gamma-t" min="0" max="5" step="0.05" value="0.1" class="w-full accent-purple-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-[10px] text-slate-500">Loss of quantum coherence (transverse decay rate γ/2 + γ_pure).</p>
+                </div>
+            </div>
+
+            <!-- Simulation Player Controls -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
+                <div class="flex items-center gap-2">
+                    <button id="btn-play" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 font-semibold rounded-lg text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-900/30">
+                        <i class="fa-solid fa-play"></i> <span id="lbl-play">Play</span>
+                    </button>
+                    <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-300 transition-all">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+
+                <!-- Sim Speed Slider -->
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400">Speed:</span>
+                    <input type="range" id="slider-speed" min="0.1" max="3" step="0.1" value="1.0" class="flex-1 accent-blue-500 bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer">
+                    <span id="val-speed" class="text-xs font-mono text-slate-300 w-8 text-right">1.0x</span>
+                </div>
+            </div>
+
+            <!-- Mathematics & Analytical Steady State Card -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
+                <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-square-root-variable text-blue-400"></i> Vector Differential Equation
+                </h2>
+                
+                <!-- Math Form Display -->
+                <div class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 text-center overflow-x-auto">
+                    <div id="math-obe-equation" class="text-xs text-slate-200"></div>
+                </div>
+
+                <!-- Real-Time Analytical Values -->
+                <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div class="p-2 bg-slate-800/60 rounded-lg border border-slate-700/60">
+                        <span class="text-slate-400 block text-[10px]">Generalized Rabi Freq (Ω)</span>
+                        <span id="val-gen-rabi" class="font-mono text-cyan-300 font-semibold">2.00 rad/s</span>
+                    </div>
+                    <div class="p-2 bg-slate-800/60 rounded-lg border border-slate-700/60">
+                        <span class="text-slate-400 block text-[10px]">Saturation Param (s₀)</span>
+                        <span id="val-sat-param" class="font-mono text-amber-300 font-semibold">200.00</span>
+                    </div>
+                </div>
+
+                <div class="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80 text-xs space-y-1">
+                    <span class="text-slate-400 block text-[11px] font-semibold">Analytical Steady State (t → ∞):</span>
+                    <div class="grid grid-cols-3 font-mono text-center text-[11px]">
+                        <span id="val-uss" class="text-blue-400">u_ss: 0.00</span>
+                        <span id="val-vss" class="text-emerald-400">v_ss: 0.00</span>
+                        <span id="val-wss" class="text-amber-400">w_ss: -1.00</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: 3D Sphere & Graphs (8 cols) -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- 3D Bloch Sphere Canvas Box -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-xl relative flex flex-col h-[520px]">
+                
+                <!-- Overlay Header Badges -->
+                <div class="absolute top-6 left-6 z-10 flex flex-wrap gap-2 pointer-events-none">
+                    <div class="px-3 py-1 bg-slate-950/80 border border-slate-800 rounded-lg backdrop-blur-md text-xs font-mono flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                        <span class="text-slate-300">R = (<span id="badge-u" class="text-blue-400">0.00</span>, <span id="badge-v" class="text-emerald-400">0.00</span>, <span id="badge-w" class="text-amber-400">-1.00</span>)</span>
+                    </div>
+                    <div class="px-3 py-1 bg-slate-950/80 border border-slate-800 rounded-lg backdrop-blur-md text-xs font-mono flex items-center gap-2">
+                        <span class="text-slate-400">Length |R|:</span>
+                        <span id="badge-length" class="text-white font-bold">1.000</span>
+                        <span id="badge-purity" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Pure State</span>
+                    </div>
+                </div>
+
+                <div class="absolute top-6 right-6 z-10 hidden sm:flex items-center gap-3 text-xs bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800 backdrop-blur-md">
+                    <span class="flex items-center gap-1.5 text-slate-300"><span class="w-3 h-1 bg-red-500 rounded"></span> Bloch Vector R</span>
+                    <span class="flex items-center gap-1.5 text-slate-300"><span class="w-3 h-1 bg-amber-400 rounded"></span> Torque Ω</span>
+                </div>
+
+                <!-- Canvas Container -->
+                <div id="canvas-container" class="w-full h-full rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"></div>
+
+                <div class="absolute bottom-6 left-6 z-10 text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800/80 pointer-events-none">
+                    <i class="fa-solid fa-hand-pointer mr-1 text-blue-400"></i> Click & Drag to Rotate | Scroll to Zoom
+                </div>
+            </div>
+
+            <!-- Time-Series Chart Box -->
+            <div class="bg-navy-900 border border-slate-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col min-h-[280px]">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Trajectory Evolution (u, v, w vs Time)
+                    </h2>
+                    <span id="time-display" class="font-mono text-xs text-slate-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">t = 0.00 s</span>
+                </div>
+
+                <div class="relative flex-1 w-full h-full min-h-[200px]">
+                    <canvas id="chart-canvas"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Simulation & Math Logic Script -->
+    <script>
+        // --- Global State & Physical Variables ---
+        let simState = {
+            u: 0.0, v: 0.0, w: -1.0, // Start in Ground state |1>
+            omega0: 2.0,            // Rabi Frequency
+            delta: 0.0,             // Detuning
+            gammaParallel: 0.2,     // Spontaneous emission rate T1
+            gammaPerp: 0.1,         // Dephasing rate T2
+            time: 0.0,              // Current simulation time
+            dt: 0.01,               // Fundamental timestep
+            isRunning: false,
+            speed: 1.0,
+            trajectory: []          // History of (u, v, w, time)
+        };
+
+        // --- Three.js 3D Sphere Variables ---
+        let scene, camera, renderer, controls;
+        let blochArrow, torqueArrow, sphereMesh, trajectoryLine;
+        let maxTrailPoints = 800;
+
+        // --- Chart.js Realtime Plot ---
+        let trajectoryChart;
+
+        // --- DOM Elements ---
+        const sliderOmega = document.getElementById('slider-omega');
+        const sliderDelta = document.getElementById('slider-delta');
+        const sliderGammaP = document.getElementById('slider-gamma-p');
+        const sliderGammaT = document.getElementById('slider-gamma-t');
+        const sliderSpeed = document.getElementById('slider-speed');
+
+        const valOmega = document.getElementById('val-omega');
+        const valDelta = document.getElementById('val-delta');
+        const valGammaP = document.getElementById('val-gamma-p');
+        const valGammaT = document.getElementById('val-gamma-t');
+        const valSpeed = document.getElementById('val-speed');
+
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const lblPlay = document.getElementById('lbl-play');
+
+        const badgeU = document.getElementById('badge-u');
+        const badgeV = document.getElementById('badge-v');
+        const badgeW = document.getElementById('badge-w');
+        const badgeLength = document.getElementById('badge-length');
+        const badgePurity = document.getElementById('badge-purity');
+        const timeDisplay = document.getElementById('time-display');
+
+        // Initialize App on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initMathJaxKaTeX();
+            initThreeJS();
+            initChartJS();
+            bindEventListeners();
+            updateCalculatedValues();
+            animateLoop();
+        });
+
+        // Render TeX Equations
+        function initMathJaxKaTeX() {
+            katex.render(
+                "\\frac{d\\mathbf{R}}{dt} = \\boldsymbol{\\Omega} \\times \\mathbf{R} - \\gamma_\\perp u\\mathbf{e}_u - \\gamma_\\perp v\\mathbf{e}_v - \\gamma_\\parallel (w - w_{eq})\\mathbf{e}_w",
+                document.getElementById('math-obe-equation'),
+                { displayMode: true, throwOnError: false }
+            );
+        }
+
+        // --- Optical Bloch Equations (Derivatives) ---
+        function obeDerivatives(u, v, w, w0, delta, gP, gT) {
+            const du = -delta * v - gT * u;
+            const dv =  delta * u + w0 * w - gT * v;
+            const dw = -w0 * v - gP * (w + 1.0); // w_eq = -1
+            return [du, dv, dw];
+        }
+
+        // --- Multi-Substep RK4 Solver with Strict Length Clamping ---
+        function stepRK4WithSubsteps(dtTotal) {
+            const subSteps = 4; // Sub-steps per frame to eliminate discretization overshoot
+            const dt = dtTotal / subSteps;
+
+            const w0 = simState.omega0;
+            const d = simState.delta;
+            const gP = simState.gammaParallel;
+            const gT = simState.gammaPerp;
+
+            for (let step = 0; step < subSteps; step++) {
+                let u = simState.u;
+                let v = simState.v;
+                let w = simState.w;
+
+                // k1
+                const [du1, dv1, dw1] = obeDerivatives(u, v, w, w0, d, gP, gT);
+
+                // k2
+                const [du2, dv2, dw2] = obeDerivatives(
+                    u + 0.5 * dt * du1,
+                    v + 0.5 * dt * dv1,
+                    w + 0.5 * dt * dw1,
+                    w0, d, gP, gT
+                );
+
+                // k3
+                const [du3, dv3, dw3] = obeDerivatives(
+                    u + 0.5 * dt * du2,
+                    v + 0.5 * dt * dv2,
+                    w + 0.5 * dt * dw2,
+                    w0, d, gP, gT
+                );
+
+                // k4
+                const [du4, dv4, dw4] = obeDerivatives(
+                    u + dt * du3,
+                    v + dt * dv3,
+                    w + dt * dw3,
+                    w0, d, gP, gT
+                );
+
+                // Update state
+                simState.u += (dt / 6.0) * (du1 + 2*du2 + 2*du3 + du4);
+                simState.v += (dt / 6.0) * (dv1 + 2*dv2 + 2*dv3 + dv4);
+                simState.w += (dt / 6.0) * (dw1 + 2*dw2 + 2*dw3 + dw4);
+
+                // STRICT PHYSICAL BOUNDARY GUARANTEE: |R| <= 1.0
+                const currentLength = Math.sqrt(simState.u * simState.u + simState.v * simState.v + simState.w * simState.w);
+                if (currentLength > 1.0) {
+                    simState.u /= currentLength;
+                    simState.v /= currentLength;
+                    simState.w /= currentLength;
+                }
+            }
+
+            simState.time += dtTotal;
+
+            // Save to trajectory history
+            simState.trajectory.push({
+                t: simState.time,
+                u: simState.u,
+                v: simState.v,
+                w: simState.w
+            });
+
+            if (simState.trajectory.length > maxTrailPoints) {
+                simState.trajectory.shift();
+            }
+        }
+
+        // --- Analytical Calculations ---
+        function updateCalculatedValues() {
+            const w0 = simState.omega0;
+            const d = simState.delta;
+            const gP = simState.gammaParallel;
+            const gT = simState.gammaPerp;
+
+            // Generalized Rabi Frequency Omega = sqrt(Omega0^2 + Delta^2)
+            const genRabi = Math.sqrt(w0*w0 + d*d);
+            document.getElementById('val-gen-rabi').innerText = `${genRabi.toFixed(2)} rad/s`;
+
+            // Saturation parameter s0 = Omega0^2 / (2 * gamma_parallel * gamma_perp)
+            let s0 = 0;
+            if (gP > 0 && gT > 0) {
+                s0 = (w0 * w0) / (2 * gP * gT);
+                document.getElementById('val-sat-param').innerText = s0.toFixed(2);
+            } else {
+                document.getElementById('val-sat-param').innerText = "∞";
+            }
+
+            // Analytical Steady State Calculations (for t -> infinity)
+            let u_ss = 0, v_ss = 0, w_ss = -1;
+            if (gP > 0 && gT > 0) {
+                const denom = d*d + gT*gT + (w0*w0 * gT / gP);
+                if (denom > 0) {
+                    u_ss = (d * w0) / denom;
+                    v_ss = (gT * w0) / denom;
+                    w_ss = -1 + (w0*w0 * gT / gP) / denom;
+                }
+            }
+            document.getElementById('val-uss').innerText = `u_ss: ${u_ss.toFixed(2)}`;
+            document.getElementById('val-vss').innerText = `v_ss: ${v_ss.toFixed(2)}`;
+            document.getElementById('val-wss').innerText = `w_ss: ${w_ss.toFixed(2)}`;
+        }
+
+        // --- Three.js Setup ---
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(2.8, 1.8, 3.2);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // --- Construct Bloch Sphere Elements ---
+            const sphereRadius = 1.2;
+
+            // 1. Semi-transparent Sphere Surface
+            const sphereGeo = new THREE.SphereGeometry(sphereRadius, 32, 32);
+            const sphereMat = new THREE.MeshPhongMaterial({
+                color: 0x1e293b,
+                transparent: true,
+                opacity: 0.25,
+                wireframe: false,
+                depthWrite: false
+            });
+            sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+            scene.add(sphereMesh);
+
+            // Wireframe grid lines
+            const wireGeo = new THREE.WireframeGeometry(sphereGeo);
+            const wireMat = new THREE.LineBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.3 });
+            const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+            scene.add(wireframe);
+
+            // Equator Ring
+            const ringGeo = new THREE.RingGeometry(sphereRadius - 0.005, sphereRadius + 0.005, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x475569, side: THREE.DoubleSide });
+            const equatorRing = new THREE.Mesh(ringGeo, ringMat);
+            equatorRing.rotation.x = Math.PI / 2;
+            scene.add(equatorRing);
+
+            // 2. Axes Lines
+            // Three.js Coordinate mapping: X -> u (dispersive), Z -> v (quadrature), Y -> w (inversion)
+            const axisLength = 1.6;
+            
+            // X-axis (u) - Blue
+            createAxis(new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0), 0x3b82f6);
+            // Y-axis (w - vertical) - Amber
+            createAxis(new THREE.Vector3(0, -axisLength, 0), new THREE.Vector3(0, axisLength, 0), 0xf59e0b);
+            // Z-axis (v - depth) - Emerald
+            createAxis(new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength), 0x10b981);
+
+            // Labels / Pole Spheres
+            createPoleMarker(0, sphereRadius, 0, 0xef4444, "|2⟩ Excited State");
+            createPoleMarker(0, -sphereRadius, 0, 0x3b82f6, "|1⟩ Ground State");
+
+            // Axis Text Labels
+            create3DTextLabel("u (Dispersive)", axisLength + 0.15, 0, 0, "#3b82f6");
+            create3DTextLabel("w (Inversion)", 0, axisLength + 0.15, 0, "#f59e0b");
+            create3DTextLabel("v (Absorptive)", 0, 0, axisLength + 0.15, "#10b981");
+
+            // 3. Bloch Vector Arrow (R = (u, v, w))
+            const arrowDir = new THREE.Vector3(0, -1, 0); // initial ground state
+            blochArrow = new THREE.ArrowHelper(arrowDir, new THREE.Vector3(0, 0, 0), sphereRadius, 0xef4444, 0.25, 0.12);
+            blochArrow.line.material.linewidth = 3;
+            scene.add(blochArrow);
+
+            // 4. Driving Torque Vector Arrow (Omega = (-Omega_0, 0, Delta))
+            torqueArrow = new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 0), 1.0, 0xf59e0b, 0.2, 0.1);
+            torqueArrow.line.material.linewidth = 2;
+            scene.add(torqueArrow);
+
+            // 5. Trajectory Line
+            const maxPoints = maxTrailPoints;
+            const trajGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(maxPoints * 3);
+            trajGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const trajMat = new THREE.LineBasicMaterial({
+                color: 0xf43f5e,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.8
+            });
+            trajectoryLine = new THREE.Line(trajGeo, trajMat);
+            scene.add(trajectoryLine);
+
+            // Handle Window Resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createAxis(start, end, colorHex) {
+            const geom = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const mat = new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.05, gapSize: 0.03, transparent: true, opacity: 0.6 });
+            const line = new THREE.Line(geom, mat);
+            line.computeLineDistances();
+            scene.add(line);
+        }
+
+        function createPoleMarker(x, y, z, colorHex) {
+            const pGeo = new THREE.SphereGeometry(0.04, 16, 16);
+            const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+            const pMesh = new THREE.Mesh(pGeo, pMat);
+            pMesh.position.set(x, y, z);
+            scene.add(pMesh);
+        }
+
+        function create3DTextLabel(text, x, y, z, colorStr) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+
+            ctx.fillStyle = 'transparent';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = 'Bold 24px Inter, sans-serif';
+            ctx.fillStyle = colorStr;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(x, y, z);
+            sprite.scale.set(0.8, 0.2, 1);
+            scene.add(sprite);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // --- Chart.js Setup ---
+        function initChartJS() {
+            const ctx = document.getElementById('chart-canvas').getContext('2d');
+            trajectoryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'u (Dispersive)',
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            data: [],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'v (Absorptive)',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            data: [],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'w (Inversion)',
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            data: [],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Time (s)', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            min: -1.1,
+                            max: 1.1,
+                            title: { display: true, text: 'Component Value', color: '#94a3b8', font: { size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cbd5e1', font: { size: 11 }, usePointStyle: true, boxWidth: 6 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Render & Animation Loop ---
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+
+            if (simState.isRunning) {
+                // Execute integration steps based on speed
+                const steps = Math.round(3 * simState.speed);
+                for (let i = 0; i < steps; i++) {
+                    stepRK4WithSubsteps(simState.dt);
+                }
+                updateUIAndGraphics();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Update 3D Visuals & UI Displays ---
+        function updateUIAndGraphics() {
+            const sphereRadius = 1.2;
+            const u = simState.u;
+            const v = simState.v;
+            const w = simState.w;
+
+            // 1. Update Bloch Vector Arrow
+            // Coordinate Mapping: X -> u, Y -> w, Z -> v
+            const length = Math.sqrt(u*u + v*v + w*w);
+            const dir = new THREE.Vector3(u, w, v);
+            
+            if (length > 0.0001) {
+                dir.normalize();
+                blochArrow.setDirection(dir);
+                blochArrow.setLength(length * sphereRadius, 0.2 * Math.min(length, 1), 0.1 * Math.min(length, 1));
+            }
+
+            // 2. Update Torque Vector Arrow Omega = (-Omega0, 0, Delta)
+            const w0 = simState.omega0;
+            const d = simState.delta;
+            const torqueVec = new THREE.Vector3(-w0, d, 0); // X -> -Omega0, Y -> Delta, Z -> 0
+            const torqueLen = torqueVec.length();
+            if (torqueLen > 0.001) {
+                torqueVec.normalize();
+                torqueArrow.visible = true;
+                torqueArrow.setDirection(torqueVec);
+                torqueArrow.setLength(Math.min(torqueLen * 0.4, 1.8) * sphereRadius, 0.2, 0.1);
+            } else {
+                torqueArrow.visible = false;
+            }
+
+            // 3. Update Trajectory Line in Three.js
+            const positions = trajectoryLine.geometry.attributes.position.array;
+            const traj = simState.trajectory;
+            for (let i = 0; i < maxTrailPoints; i++) {
+                if (i < traj.length) {
+                    const pt = traj[i];
+                    positions[i * 3]     = pt.u * sphereRadius;
+                    positions[i * 3 + 1] = pt.w * sphereRadius;
+                    positions[i * 3 + 2] = pt.v * sphereRadius;
+                } else {
+                    const lastPt = traj.length > 0 ? traj[traj.length - 1] : {u:0, v:0, w:-1};
+                    positions[i * 3]     = lastPt.u * sphereRadius;
+                    positions[i * 3 + 1] = lastPt.w * sphereRadius;
+                    positions[i * 3 + 2] = lastPt.v * sphereRadius;
+                }
+            }
+            trajectoryLine.geometry.attributes.position.needsUpdate = true;
+
+            // 4. Update Header Badges & Text Outputs
+            badgeU.innerText = u.toFixed(2);
+            badgeV.innerText = v.toFixed(2);
+            badgeW.innerText = w.toFixed(2);
+            badgeLength.innerText = length.toFixed(3);
+
+            if (length >= 0.98) {
+                badgePurity.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+                badgePurity.innerText = "Pure State (|R| = 1)";
+            } else {
+                badgePurity.className = "text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30";
+                badgePurity.innerText = `Mixed State (|R| = ${length.toFixed(2)})`;
+            }
+
+            timeDisplay.innerText = `t = ${simState.time.toFixed(2)} s`;
+
+            // 5. Update Chart Data
+            const labels = traj.map(p => p.t.toFixed(1));
+            const dataU = traj.map(p => p.u);
+            const dataV = traj.map(p => p.v);
+            const dataW = traj.map(p => p.w);
+
+            trajectoryChart.data.labels = labels;
+            trajectoryChart.data.datasets[0].data = dataU;
+            trajectoryChart.data.datasets[1].data = dataV;
+            trajectoryChart.data.datasets[2].data = dataW;
+            trajectoryChart.update();
+        }
+
+        // --- Presets & State Actions ---
+        function setInitialState(u, v, w) {
+            simState.u = u;
+            simState.v = v;
+            simState.w = w;
+            simState.time = 0.0;
+            simState.trajectory = [{ t: 0.0, u, v, w }];
+            updateCalculatedValues();
+            updateUIAndGraphics();
+        }
+
+        function runPiPulse() {
+            resetParameters();
+            setInitialState(0, 0, -1);
+            simState.omega0 = 3.14159; // pi rad/s
+            simState.delta = 0.0;
+            simState.gammaParallel = 0.0;
+            simState.gammaPerp = 0.0;
+            sliderOmega.value = 3.14;
+            sliderDelta.value = 0;
+            sliderGammaP.value = 0;
+            sliderGammaT.value = 0;
+            updateSliderLabels();
+            updateCalculatedValues();
+            
+            simState.isRunning = true;
+            lblPlay.innerText = "Pause";
+            btnPlay.className = btnPlay.className.replace('bg-blue-600', 'bg-amber-600');
+            setTimeout(() => {
+                if (simState.time >= 1.0) {
+                    simState.isRunning = false;
+                    lblPlay.innerText = "Play";
+                    btnPlay.className = btnPlay.className.replace('bg-amber-600', 'bg-blue-600');
+                }
+            }, 1000);
+        }
+
+        function runPiHalfPulse() {
+            resetParameters();
+            setInitialState(0, 0, -1);
+            simState.omega0 = 1.5708; // pi/2 rad/s
+            simState.delta = 0.0;
+            simState.gammaParallel = 0.0;
+            simState.gammaPerp = 0.0;
+            sliderOmega.value = 1.57;
+            sliderDelta.value = 0;
+            sliderGammaP.value = 0;
+            sliderGammaT.value = 0;
+            updateSliderLabels();
+            updateCalculatedValues();
+
+            simState.isRunning = true;
+            lblPlay.innerText = "Pause";
+        }
+
+        function runRamseySequence() {
+            resetParameters();
+            setInitialState(0, 0, -1);
+            simState.omega0 = 3.14159;
+            simState.delta = 2.0;
+            simState.gammaParallel = 0.05;
+            simState.gammaPerp = 0.05;
+            sliderOmega.value = 3.14;
+            sliderDelta.value = 2.0;
+            sliderGammaP.value = 0.05;
+            sliderGammaT.value = 0.05;
+            updateSliderLabels();
+            updateCalculatedValues();
+
+            simState.isRunning = true;
+            lblPlay.innerText = "Pause";
+        }
+
+        function resetParameters() {
+            simState.omega0 = 2.0;
+            simState.delta = 0.0;
+            simState.gammaParallel = 0.2;
+            simState.gammaPerp = 0.1;
+
+            sliderOmega.value = 2.0;
+            sliderDelta.value = 0.0;
+            sliderGammaP.value = 0.2;
+            sliderGammaT.value = 0.1;
+
+            updateSliderLabels();
+            updateCalculatedValues();
+        }
+
+        function updateSliderLabels() {
+            valOmega.innerText = `${parseFloat(sliderOmega.value).toFixed(2)} rad/s`;
+            valDelta.innerText = `${parseFloat(sliderDelta.value).toFixed(2)} rad/s`;
+            valGammaP.innerText = `${parseFloat(sliderGammaP.value).toFixed(2)} s⁻¹`;
+            valGammaT.innerText = `${parseFloat(sliderGammaT.value).toFixed(2)} s⁻¹`;
+            valSpeed.innerText = `${parseFloat(sliderSpeed.value).toFixed(1)}x`;
+        }
+
+        // --- Event Listeners Binding ---
+        function bindEventListeners() {
+            // Sliders
+            sliderOmega.addEventListener('input', (e) => {
+                simState.omega0 = parseFloat(e.target.value);
+                updateSliderLabels();
+                updateCalculatedValues();
+            });
+
+            sliderDelta.addEventListener('input', (e) => {
+                simState.delta = parseFloat(e.target.value);
+                updateSliderLabels();
+                updateCalculatedValues();
+            });
+
+            sliderGammaP.addEventListener('input', (e) => {
+                simState.gammaParallel = parseFloat(e.target.value);
+                updateSliderLabels();
+                updateCalculatedValues();
+            });
+
+            sliderGammaT.addEventListener('input', (e) => {
+                simState.gammaPerp = parseFloat(e.target.value);
+                updateSliderLabels();
+                updateCalculatedValues();
+            });
+
+            sliderSpeed.addEventListener('input', (e) => {
+                simState.speed = parseFloat(e.target.value);
+                updateSliderLabels();
+            });
+
+            // Controls
+            btnPlay.addEventListener('click', () => {
+                simState.isRunning = !simState.isRunning;
+                if (simState.isRunning) {
+                    lblPlay.innerText = "Pause";
+                    btnPlay.className = btnPlay.className.replace('bg-blue-600', 'bg-amber-600');
+                    document.getElementById('status-text').innerText = "Status: Simulating";
+                } else {
+                    lblPlay.innerText = "Play";
+                    btnPlay.className = btnPlay.className.replace('bg-amber-600', 'bg-blue-600');
+                    document.getElementById('status-text').innerText = "Status: Paused";
+                }
+            });
+
+            btnReset.addEventListener('click', () => {
+                simState.isRunning = false;
+                lblPlay.innerText = "Play";
+                btnPlay.className = btnPlay.className.replace('bg-amber-600', 'bg-blue-600');
+                document.getElementById('status-text').innerText = "Status: Reset";
+                setInitialState(0, 0, -1);
+            });
+
+            document.getElementById('reset-cam-btn').addEventListener('click', () => {
+                camera.position.set(2.8, 1.8, 3.2);
+                controls.target.set(0, 0, 0);
+            });
+        }
+    </script>
+</body>
+</html>
